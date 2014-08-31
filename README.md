@@ -1,4 +1,4 @@
-ruby-fileutils
+fileutils
 ==============
 
 Ruby FileUtils library
