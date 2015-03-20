@@ -192,6 +192,23 @@ module FileUtils
       Kernel.system "touch #{opts.to_s}#{list.to_s}"
     end
 
+    alias_method :_cd, :cd
+
+    def cd list, *opts
+      opts = opts.to_set
+
+      list, opts = parse_list_args list, *opts
+      opts.flags = [:v]
+
+      raise ArgumentError if list.a?
+
+      return false unless list.directory?
+
+      _cd list.to_s, opts.include? :v ? {:verbose => true} : {:verbose => false}
+
+      true
+    end
+
     def pwd
       Pathname.new(`pwd`.chomp)
     end
