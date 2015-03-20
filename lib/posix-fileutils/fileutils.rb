@@ -92,7 +92,7 @@ module FileUtils
 
         srcfile = src + file.relative_path_from(dst)
 
-        rm file, *(opts&@popts[:rm]) unless srcfile.exist?
+        (rm file, *(opts&@popts[:rm]) or return false) unless srcfile.exist?
       end
       
       Dir["#{src.to_s}/**/{*,.*}"].each do |file|
