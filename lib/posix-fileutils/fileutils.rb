@@ -204,7 +204,7 @@ module FileUtils
 
       return false unless list.directory?
 
-      _cd list.to_s, opts.include? :v ? {:verbose => true} : {:verbose => false}
+      _cd list.to_s, opts.include?(:v) ? {:verbose => true} : {:verbose => false}
 
       true
     end
