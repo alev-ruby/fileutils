@@ -68,6 +68,7 @@ module FileUtils
 
       [src, dst, opts]
     end
+    module_function :parse_cp_args
 
     def cp src, dst, *opts
       opts = opts.to_set
@@ -78,6 +79,7 @@ module FileUtils
 
       Kernel.system "cp #{opts.to_s}#{src.to_s} #{dst.to_s}"
     end
+    module_function :cp
 
     def dsync src, dst, *opts
       src, dst, opts = parse_cp_args src, dst, *opts
@@ -110,6 +112,7 @@ module FileUtils
 
       true
     end
+    module_function :dsync
 
     def mv src, dst, *opts
       opts = opts.to_set
@@ -118,6 +121,7 @@ module FileUtils
 
       Kernel.system "mv #{opts.to_s}#{src.to_s} #{dst.to_s}"
     end
+    module_function :mv
 
     def parse_list_args list, *opts
       if list.a?
@@ -153,6 +157,7 @@ module FileUtils
 
       [list, opts]
     end
+    module_function :parse_list_args
 
     def rm list, *opts
       opts = opts.to_set
@@ -164,6 +169,7 @@ module FileUtils
 
       Kernel.system "rm #{opts.to_s}#{list.to_s}"
     end
+    module_function :rm
 
     def mkdir list, *opts
       opts = opts.to_set
@@ -182,6 +188,7 @@ module FileUtils
 
       Kernel.system "mkdir #{opts.to_s}#{list.to_s}"
     end
+    module_function :mkdir
 
     def touch list, *opts
       opts = opts.to_set
@@ -191,6 +198,7 @@ module FileUtils
 
       Kernel.system "touch #{opts.to_s}#{list.to_s}"
     end
+    module_function :touch
 
     alias_method :_cd, :cd
 
@@ -208,10 +216,12 @@ module FileUtils
 
       true
     end
+    module_function :cd
 
     def pwd
       Pathname.new(`pwd`.chomp)
     end
+    module_function :pwd
 
   end # class << self
 end # module FileUtils
