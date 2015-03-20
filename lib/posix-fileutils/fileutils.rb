@@ -1,5 +1,7 @@
 require 'fileutils'
 require 'pathname'
+require 'set'
+require 'digest'
 
 class Object
   def a?
@@ -7,8 +9,23 @@ class Object
   end
 end
 
+class Array
+  def to_set
+    Set.new self
+  end
+end
+
 module FileUtils
-  $fudeopt = []
+  $fudeopt = [].to_set
+  @popts = {
+    :cp    => [:T,:a,:v,:r].to_set,
+    :mv    => [:T,:a,:v,:r].to_set,
+    :rm    => [:v, :f, :r].to_set,
+    :touch => [:v].to_set,
+    :pwd   => [].to_set,
+    :mkdir => [:v, :p].to_set,
+    :dsync => [:v, ].to_set,
+  }
 
   class << self
     def parse_cp_args src, dst, *opts
@@ -40,7 +57,7 @@ module FileUtils
           opts_s = '-f '
 
           [:T, :a, :v, :r].each do |opt|
-            opts_s << "-#{opt.to_s} " if index(opt) || $fudeopt.index(opt)
+            opts_s << "-#{opt.to_s} " if include?(opt) || $fudeopt.include?(opt)
           end
 
           opts_s
@@ -53,6 +70,8 @@ module FileUtils
     end
 
     def cp src, dst, *opts
+      opts = opts.to_set
+
       src, dst, opts = parse_cp_args src, dst, *opts
 
       opts << :r if src.a? ? src.inject(false) do |a,p| p.directory? | a end : src.directory?
@@ -60,7 +79,41 @@ module FileUtils
       Kernel.system "cp #{opts.to_s}#{src.to_s} #{dst.to_s}"
     end
 
+    def dsync src, dst, *opts
+      src, dst, opts = parse_cp_args src, dst, *opts
+
+      opts = opts.to_set
+      
+      raise ArgumentError unless src.directory? && dst.directory?
+
+      Dir["#{dst.to_s}/**/{*,.*}"].each do |file|
+        file = Pathname.new file
+        next unless file.exist?
+
+        srcfile = src + file.relative_path_from(dst)
+
+        rm file, *(opts&@popts[:rm]) unless srcfile.exist?
+      end
+      
+      Dir["#{src.to_s}/**/{*,.*}"].each do |file|
+        file = Pathname.new file
+        next if file.directory?
+
+        dstfile = dst + file.relative_path_from(src)
+
+        (mkdir dstfile.dirname, *((opts+[:p])&@popts[:mkdir]) or return false) unless dstfile.dirname.directory?
+
+        next if dstfile.file? && Digest::SHA256.file(file) == Digest::SHA256.file(dstfile)
+
+        cp file, dstfile, *(opts&@popts[:cp]) or return false
+      end
+
+      true
+    end
+
     def mv src, dst, *opts
+      opts = opts.to_set
+
       src, dst, opts = parse_cp_args src, dst, *opts
 
       Kernel.system "mv #{opts.to_s}#{src.to_s} #{dst.to_s}"
@@ -89,7 +142,7 @@ module FileUtils
           opts_s = ''
 
           @flags.each do |opt|
-            opts_s << "-#{opt.to_s} " if index(opt) || $fudeopt.index(opt)
+            opts_s << "-#{opt.to_s} " if include?(opt) || $fudeopt.include?(opt)
           end
 
           opts_s
@@ -102,6 +155,8 @@ module FileUtils
     end
 
     def rm list, *opts
+      opts = opts.to_set
+
       list, opts = parse_list_args list, *opts
       opts.flags = [:v, :f, :r]
 
@@ -111,10 +166,12 @@ module FileUtils
     end
 
     def mkdir list, *opts
-      list, opts = parse_list_args list, *opts
-      opts.flags = [:v]
+      opts = opts.to_set
 
-      if opts.index :f
+      list, opts = parse_list_args list, *opts
+      opts.flags = [:v, :p]
+
+      if opts.include? :f
         unless list.a?
           return true if list.directory?
         else
@@ -127,6 +184,8 @@ module FileUtils
     end
 
     def touch list, *opts
+      opts = opts.to_set
+
       list, opts = parse_list_args list, *opts
       opts.flags = [:v]
 
