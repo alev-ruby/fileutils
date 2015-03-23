@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name        = 'posix-fileutils'
-  s.version     = '0.1.7'
-  s.date        = '2015-03-20'
+  s.version     = '0.1.10'
+  s.date        = '2015-03-23'
   s.summary     = "FileUtils library"
   s.description = "FileUtils library"
   s.authors     = ["A. Levenkov"]

@@ -3,6 +3,7 @@ require 'pathname'
 require 'set'
 require 'digest'
 
+
 class Object
   def a?
     Enumerable === self
@@ -15,19 +16,27 @@ class Array
   end
 end
 
-module FileUtils
-  $fudeopt = [].to_set
+module Fs
+  @defopts = [].to_set
   @popts = {
-    :cp    => [:T,:a,:v,:r].to_set,
-    :mv    => [:T,:a,:v,:r].to_set,
-    :rm    => [:v, :f, :r].to_set,
-    :touch => [:v].to_set,
-    :pwd   => [].to_set,
-    :mkdir => [:v, :p].to_set,
-    :dsync => [:v, ].to_set,
-  }
+    :cp    => [:T,:a,:v,:r     ],
+    :mv    => [:T,:a,:v,:r     ],
+    :rm    => [      :v,:r,:f  ],
+    :touch => [      :v        ],
+    :pwd   => [                ],
+    :mkdir => [      :v,     :p],
+    :dsync => [      :v,       ],
+  }.inject({}) do |h,(k,v)| h[k]=v.to_set; h end
 
-  def parse_cp_args src, dst, *opts
+  class << self
+    attr_accessor :defopts
+  end
+
+  def self.popts
+    @popts.clone
+  end
+
+  def self.parse_cp_args src, dst, *opts
     raise ArgumentError unless !dst.a?
 
     dst = Pathname.new dst.to_s unless dst.kind_of? Pathname
@@ -56,7 +65,7 @@ module FileUtils
         opts_s = '-f '
 
         [:T, :a, :v, :r].each do |opt|
-          opts_s << "-#{opt.to_s} " if include?(opt) || $fudeopt.include?(opt)
+          opts_s << "-#{opt.to_s} " if include?(opt) || Fs.defopts.include?(opt)
         end
 
         opts_s
@@ -67,9 +76,8 @@ module FileUtils
 
     [src, dst, opts]
   end
-  module_function :parse_cp_args
 
-  def cp src, dst, *opts
+  def self.cp src, dst, *opts
     opts = opts.to_set
 
     src, dst, opts = parse_cp_args src, dst, *opts
@@ -78,22 +86,23 @@ module FileUtils
 
     Kernel.system "cp #{opts.to_s}#{src.to_s} #{dst.to_s}"
   end
-  module_function :cp
 
-  def dsync src, dst, *opts
+  def self.dsync src, dst, *opts
     src, dst, opts = parse_cp_args src, dst, *opts
 
     opts = opts.to_set
     
     raise ArgumentError unless src.directory? && dst.directory?
 
-    Dir["#{dst.to_s}/**/{*,.*}"].each do |file|
-      file = Pathname.new file
-      next unless file.exist?
+    if opts.include? :d
+      Dir["#{dst.to_s}/**/{*,.*}"].each do |file|
+        file = Pathname.new file
+        next unless file.exist?
 
-      srcfile = src + file.relative_path_from(dst)
+        srcfile = src + file.relative_path_from(dst)
 
-      (rm file, *(opts&@popts[:rm]) or return false) unless srcfile.exist?
+        (rm file, *(opts&@popts[:rm]) or return false) unless srcfile.exist?
+      end
     end
     
     Dir["#{src.to_s}/**/{*,.*}"].each do |file|
@@ -111,18 +120,16 @@ module FileUtils
 
     true
   end
-  module_function :dsync
 
-  def mv src, dst, *opts
+  def self.mv src, dst, *opts
     opts = opts.to_set
 
     src, dst, opts = parse_cp_args src, dst, *opts
 
     Kernel.system "mv #{opts.to_s}#{src.to_s} #{dst.to_s}"
   end
-  module_function :mv
 
-  def parse_list_args list, *opts
+  def self.parse_list_args list, *opts
     if list.a?
       return true if list.count == 0
 
@@ -145,7 +152,7 @@ module FileUtils
         opts_s = ''
 
         @flags.each do |opt|
-          opts_s << "-#{opt.to_s} " if include?(opt) || $fudeopt.include?(opt)
+          opts_s << "-#{opt.to_s} " if include?(opt) || Fs.defopts.include?(opt)
         end
 
         opts_s
@@ -156,9 +163,8 @@ module FileUtils
 
     [list, opts]
   end
-  module_function :parse_list_args
 
-  def rm list, *opts
+  def self.rm list, *opts
     opts = opts.to_set
 
     list, opts = parse_list_args list, *opts
@@ -168,9 +174,8 @@ module FileUtils
 
     Kernel.system "rm #{opts.to_s}#{list.to_s}"
   end
-  module_function :rm
 
-  def mkdir list, *opts
+  def self.mkdir list, *opts
     opts = opts.to_set
 
     list, opts = parse_list_args list, *opts
@@ -187,9 +192,8 @@ module FileUtils
 
     Kernel.system "mkdir #{opts.to_s}#{list.to_s}"
   end
-  module_function :mkdir
 
-  def touch list, *opts
+  def self.touch list, *opts
     opts = opts.to_set
 
     list, opts = parse_list_args list, *opts
@@ -197,11 +201,8 @@ module FileUtils
 
     Kernel.system "touch #{opts.to_s}#{list.to_s}"
   end
-  module_function :touch
 
-  alias_method :_cd, :cd
-
-  def cd list, *opts
+  def self.cd list, *opts
     opts = opts.to_set
 
     list, opts = parse_list_args list, *opts
@@ -211,18 +212,54 @@ module FileUtils
 
     return false unless list.directory?
 
-    _cd list.to_s, opts.include?(:v) ? {:verbose => true} : {:verbose => false}
+    FileUtils.cd list.to_s, opts.include?(:v) ? {:verbose => true} : {:verbose => false}
 
     true
   end
-  module_function :cd
 
-  def pwd
+  def self.pwd
     Pathname.new(`pwd`.chomp)
   end
-  module_function :pwd
 
-end # module FileUtils
+  def self.diff file1, file2, *opts
+    file1 = Pathname.new file1 unless file1.kind_of? Pathname
+    file2 = Pathname.new file2 unless file2.kind_of? Pathname
+
+    raise ArgumentError unless file1.directory? == file2.directory?
+
+    if file1.directory?
+      list1 = Dir["#{file1.to_s}/**/{*,.*}"]
+      list2 = Dir["#{file2.to_s}/**/{*,.*}"]
+
+      rellist1 = list1.map do |e| Pathname.new(e).relative_path_from file1 end
+      rellist2 = list2.map do |e| Pathname.new(e).relative_path_from file2 end
+
+      return false unless rellist1.to_set == rellist2.to_set
+
+      list1.each do |file|
+        file = Pathname.new file
+        ofile = file2 + file.relative_path_from(file1)
+
+        if file.directory?
+          return false if Dir["#{file.to_s}/{*,.*}"] == Dir["#{ofile.to_s}/{*,.*}"]
+
+          next
+        end
+
+        return false unless ofile.exist?
+        return false if ofile.directory?
+        return false unless Digest::SHA256.file(file) == Digest::SHA256.file(ofile)
+      end
+
+      return true
+    end
+
+    return false unless Digest::SHA256.file(file1) == Digest::SHA256.file(file2)
+
+    true
+  end
+
+end # module Fs
 
 # vim: sw=2 sts=2 ts=8:
 
