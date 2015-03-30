@@ -22,7 +22,7 @@ module Fs
     :cp    => [:T,:a,:v,:r     ],
     :mv    => [:T,:a,:v,:r     ],
     :rm    => [      :v,:r,:f  ],
-    :touch => [      :v        ],
+    :touch => [                ],
     :pwd   => [                ],
     :mkdir => [      :v,     :p],
     :dsync => [      :v,       ],
@@ -197,7 +197,6 @@ module Fs
     opts = opts.to_set
 
     list, opts = parse_list_args list, *opts
-    opts.flags = [:v]
 
     Kernel.system "touch #{opts.to_s}#{list.to_s}"
   end
