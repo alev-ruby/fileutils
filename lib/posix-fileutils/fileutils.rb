@@ -194,14 +194,14 @@ module Fs
   end
 
   def self.touch list, *opts
-    opts = opts.to_set
-
     list, opts = parse_list_args list, *opts
     opts.flags = [:v]
 
+    opts = opts.to_set
+
     res = Kernel.system "touch #{list.to_s}"
 
-    puts "touched files #{list.to_s}" if opts.include? :v
+    puts "touched files #{list.to_s}" if (opts|@defopts.to_set).include? :v
 
     res
   end
