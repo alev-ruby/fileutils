@@ -197,8 +197,13 @@ module Fs
     opts = opts.to_set
 
     list, opts = parse_list_args list, *opts
+    opts.flags = [:v]
 
-    Kernel.system "touch #{opts.to_s}#{list.to_s}"
+    res = Kernel.system "touch #{list.to_s}"
+
+    puts "touched files #{list.to_s}" if opts.include? :v
+
+    res
   end
 
   def self.cd list, *opts
