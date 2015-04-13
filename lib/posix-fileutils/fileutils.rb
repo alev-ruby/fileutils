@@ -131,7 +131,7 @@ module Fs
 
   def self.parse_list_args list, *opts
     if list.a?
-      return true if list.count == 0
+      return [[],[]] if list.count == 0
 
       list.map! do |elem| Pathname.new elem.to_s unless elem.kind_of? Pathname end
 
@@ -165,6 +165,8 @@ module Fs
   end
 
   def self.rm list, *opts
+    return true if list.a? && list.empty?
+
     opts = opts.to_set
 
     list, opts = parse_list_args list, *opts
