@@ -130,8 +130,10 @@ module Fs
   end
 
   def self.parse_list_args list, *opts
+    opts = opts.to_set
+
     if list.a?
-      return [[],[]] if list.count == 0
+      return [[],[].to_set] if list.count == 0
 
       list.map! do |elem| Pathname.new elem.to_s unless elem.kind_of? Pathname end
 
@@ -177,7 +179,7 @@ module Fs
     Kernel.system "rm #{opts.to_s}#{list.to_s}"
   end
 
-  def self.mkdir list, *opts
+  def self.mkdir list, *opts, &block
     opts = opts.to_set
 
     list, opts = parse_list_args list, *opts
@@ -192,7 +194,34 @@ module Fs
       end
     end
 
-    Kernel.system "mkdir #{opts.to_s}#{list.to_s}"
+    res = Kernel.system "mkdir #{opts.to_s}#{list.to_s}"
+    
+    return res if res != true
+
+    raise ArgumentError, 'Only in case single directory creating passing block is permitted' if list.a? && block
+
+    if block
+      err = nil
+
+      cwd = Fs.pwd
+      old_defopts = @defopts.clone
+      Fs.cd list, *(opts&@popts[:mkdir])
+
+      @defopts += opts
+
+      begin
+        yield
+      rescue => e
+        err = e
+      end
+      
+      Fs.cd Pathname.new(list).absolute? ? cwd : cwd.relative_path_from(self.pwd), *(opts&@popts[:mkdir])
+      @defopts = old_defopts
+
+      raise err if e
+    end
+
+    true
   end
 
   def self.touch list, *opts
@@ -208,7 +237,7 @@ module Fs
     res
   end
 
-  def self.cd list, *opts
+  def self.cd list, *opts, &block
     opts = opts.to_set
 
     list, opts = parse_list_args list, *opts
@@ -218,7 +247,27 @@ module Fs
 
     return false unless list.directory?
 
+    cwd = self.pwd
+    old_defopts = @defopts.clone
+
+    @defopts += opts
+
     FileUtils.cd list.to_s, opts.include?(:v) ? {:verbose => true} : {:verbose => false}
+
+    if block
+      err = nil
+
+      begin
+        yield
+      rescue => e
+        err = e
+      end
+
+      self.cd Pathname.new(list).absolute? ? cwd : cwd.relative_path_from(self.pwd), *opts
+      @defopts = old_defopts
+
+      raise err if err
+    end
 
     true
   end
