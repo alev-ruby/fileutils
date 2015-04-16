@@ -289,29 +289,29 @@ module Fs
       rellist1 = list1.map do |e| Pathname.new(e).relative_path_from file1 end
       rellist2 = list2.map do |e| Pathname.new(e).relative_path_from file2 end
 
-      return false unless rellist1.to_set == rellist2.to_set
+      return true unless rellist1.to_set == rellist2.to_set
 
       list1.each do |file|
         file = Pathname.new file
         ofile = file2 + file.relative_path_from(file1)
 
         if file.directory?
-          return false if Dir["#{file.to_s}/{*,.*}"] == Dir["#{ofile.to_s}/{*,.*}"]
+          return true if Dir["#{file.to_s}/{*,.*}"] == Dir["#{ofile.to_s}/{*,.*}"]
 
           next
         end
 
-        return false unless ofile.exist?
-        return false if ofile.directory?
-        return false unless Digest::SHA256.file(file) == Digest::SHA256.file(ofile)
+        return true unless ofile.exist?
+        return true if ofile.directory?
+        return true unless Digest::SHA256.file(file) == Digest::SHA256.file(ofile)
       end
 
-      return true
+      return false
     end
 
-    return false unless Digest::SHA256.file(file1) == Digest::SHA256.file(file2)
+    return true unless Digest::SHA256.file(file1) == Digest::SHA256.file(file2)
 
-    true
+    false
   end
 
 end # module Fs
