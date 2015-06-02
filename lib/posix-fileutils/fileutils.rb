@@ -82,7 +82,7 @@ module Fs
 
     src, dst, opts = parse_cp_args src, dst, *opts
 
-    opts << :r if src.a? ? src.inject(false) do |a,p| p.directory? | a end : src.directory?
+    opts << :r if src.a? ? (src.inject(false) do |a,p| p.directory? | a end) : src.directory?
 
     Kernel.system "cp #{opts.to_s}#{src.to_s} #{dst.to_s}"
   end
@@ -174,7 +174,7 @@ module Fs
     list, opts = parse_list_args list, *opts
     opts.flags = [:v, :f, :r]
 
-    opts << :r if list.a? ? list.inject(false) do |a,p| p.directory? | a end : list.directory?
+    opts << :r if list.a? ? (list.inject(false) do |a,p| p.directory? | a end) : list.directory?
 
     Kernel.system "rm #{opts.to_s}#{list.to_s}"
   end
