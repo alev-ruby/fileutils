@@ -210,7 +210,7 @@ module Fs
       @defopts += opts
 
       begin
-        yield
+        res = yield
       rescue => e
         err = e
       end
@@ -221,7 +221,7 @@ module Fs
       raise err if e
     end
 
-    true
+    res
   end
 
   def self.touch list, *opts
@@ -254,11 +254,13 @@ module Fs
 
     FileUtils.cd list.to_s, opts.include?(:v) ? {:verbose => true} : {:verbose => false}
 
+    res = true
+
     if block
       err = nil
 
       begin
-        yield
+        res = yield
       rescue => e
         err = e
       end
@@ -269,7 +271,7 @@ module Fs
       raise err if err
     end
 
-    true
+    res
   end
 
   def self.pwd

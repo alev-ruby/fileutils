@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'posix-fileutils'
-  s.version     = '0.1.18'
+  s.version     = '0.1.19'
   s.date        = Time.now.strftime '%Y-%m-%d'
   s.summary     = "FileUtils library"
   s.description = "FileUtils library"
